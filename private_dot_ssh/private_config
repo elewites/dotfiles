@@ -13,6 +13,9 @@ Host iconpc1
 Host lpul
 	HostName lpul-vanbuild01
 	User bld_icon
+Host erospul
+  Hostname lpul-vanbuild01
+  User erosrodr
 Host bench
   Hostname erosrodrlxpc
   User erosrodr

@@ -8,5 +8,5 @@ export NODE_USE_ENV_PROXY=1
 
 # Load SEL-specific environment variables if .sel file exists
 if [ -f ~/.seld/.sel ]; then
-    source ~/.sel
+    source ~/.seld/.sel
 fi

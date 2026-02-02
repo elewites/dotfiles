@@ -1,0 +1,43 @@
+# -------------------------------
+# Prettyfi (Enable colored output)
+# -------------------------------
+
+# Enables colored statistics in completion listings
+set colored-stats On
+
+# Highlights the part of the completion that matches the typed prefix
+set colored-completion-prefix On
+
+# -------------------------------
+# Completion settings
+# -------------------------------
+# If completion is ambiguous, show all possible matches immediately
+set show-all-if-ambiguous on
+
+# Ignore case when completing (e.g., 'git' matches 'Git')
+set completion-ignore-case on
+
+# Show all completions even if the text hasn't changed
+set show-all-if-unmodified on
+
+# Show the prefix of the completion menu (useful for clarity)
+set menu-complete-display-prefix on
+
+# Set the width of the completion display (0 = auto)
+set completion-display-width 0
+
+# Maximum number of items to show before asking for confirmation
+set completion-query-items 1000
+
+# -------------------------------
+# VI mode cursor shape settings
+# -------------------------------
+
+# Show current mode (insert/command) in the prompt
+set show-mode-in-prompt on
+
+# Change cursor shape to block in command mode (VI)
+set vi-cmd-mode-string "\1\x1b[2 q\2"
+
+# Change cursor shape to bar in insert mode (VI)
+set vi-ins-mode-string "\1\x1b[6 q\2"

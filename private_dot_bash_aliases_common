@@ -1,0 +1,21 @@
+# aliases
+alias alc='nvim ~/.bash_aliases_common'
+alias envars='nvim ~/.env_vars'
+alias b='nvim ~/.bashrc'
+alias gitconfig='nvim ~/.gitconfig'
+alias s='. ~/.bashrc'
+alias zz='cd ..'
+alias mux="nvim ~/.tmux.conf"
+alias put="nvim ~/.inputrc"
+alias r="source ~/.bashrc"
+alias vo="nvim /home/$USER/.config/nvim/"
+alias venv="source .venv/bin/activate"
+
+pkginstall() {
+    local host="${1:-localhost}"
+    ansible-playbook -i ~/.config/ansible/inventory ~/.config/ansible/setup-packages.yml --limit "$host" --ask-become-pass
+}
+
+
+
+    

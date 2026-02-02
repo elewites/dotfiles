@@ -1,0 +1,7 @@
+#!/bin/bash
+
+export EDITOR="nvim"
+
+
+export PATH=$PATH:~/.local/bin/:~/node_modules/.bin
+export NODE_USE_ENV_PROXY=1

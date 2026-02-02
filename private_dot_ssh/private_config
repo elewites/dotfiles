@@ -1,0 +1,26 @@
+Host erospc2
+	HostName icon-verifpc2
+	User erosrodr
+Host erospc1
+	HostName icon-verifpc1
+	User erosrodr
+Host iconpc2
+	HostName icon-verifpc2
+	User bld_icon
+Host iconpc1
+	HostName icon-verifpc1
+	User bld_icon
+Host lpul
+	HostName lpul-vanbuild01
+	User bld_icon
+Host bench
+  Hostname erosrodrlxpc
+  User erosrodr
+  ForwardX11 yes
+Host pc2
+  Hostname erosrodrlxpc2
+  User erosrodr
+  ForwardX11 yes
+Host wsl
+  Hostname EROSRODRPC
+  User eros

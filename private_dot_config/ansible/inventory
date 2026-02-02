@@ -1,0 +1,9 @@
+[local]
+localhost ansible_connection=local
+
+[remote_servers]
+EROSRODRLXPC2 ansible_user=erosrodr
+EROSRODRPC ansible_user=eros
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3

@@ -1,0 +1,244 @@
+---
+# Ansible playbook to manage apt packages
+# Run with: ansible-playbook ~/.config/ansible/setup-packages.yml --ask-become-pass
+
+- name: Setup Development Environment Packages
+  hosts: all
+  # gather_facts: no
+  become: yes
+
+  vars:
+    # GitHub releases to install
+    github_releases:
+      - name: lazygit
+        url: "https://github.com/jesseduffield/lazygit/releases/download/v0.58.1/lazygit_0.58.1_linux_x86_64.tar.gz"
+        bin_name: lazygit
+        bin_path: "lazygit" # Relative path from install_dir
+        install_dir: "/opt/lazygit"
+        tar_strip: [] # Don't strip components - files are at root
+
+      - name: neovim
+        url: "https://github.com/neovim/neovim/releases/download/v0.11.5/nvim-linux-x86_64.tar.gz"
+        bin_name: nvim
+        bin_path: "bin/nvim" # Binary is in bin/ subdirectory
+        install_dir: "/opt/nvim"
+
+      - name: yazi
+        url: "https://github.com/sxyazi/yazi/releases/download/v26.1.4/yazi-x86_64-unknown-linux-gnu.zip"
+        bin_name: yazi
+        bin_path: "yazi" # Will be fixed by the shell task
+        install_dir: "/opt/yazi"
+        extra_bins: # Additional binaries to symlink
+          - ya
+
+      - name: copilot-cli
+        url: "https://github.com/github/copilot-cli/releases/download/v0.0.390/copilot-linux-x64.tar.gz"
+        bin_name: copilot
+        bin_path: "copilot"
+        install_dir: "/opt/copilot-cli"
+        tar_strip: [] # Don't strip components for this tarball
+
+    # Core development tools
+    dev_tools:
+      - build-essential
+      - cmake
+      - meson
+      - pkg-config
+      - autoconf
+      - automake
+      - libtool
+
+    # Compilers and languages
+    compilers:
+      # - gcc
+      # - g++
+      # - clang
+      # - clangd
+      # - clang-format
+      # - clang-tidy
+      # - rustc
+      # - cargo
+      - nodejs
+
+    # Python development
+    python_tools:
+
+    # Debugging and testing
+    debug_tools:
+      - gdb
+      - valgrind
+      - lcov
+      - gcovr
+      - cppcheck
+
+    # Version control
+    vcs_tools:
+      - gh
+      - git-lfs
+
+    # Editors and terminal
+    terminal_tools:
+      - vim
+      - tmux
+      - fzf
+      - tree
+      - zoxide
+      - w3m
+      - ripgrep
+
+    # Networking and security
+    network_tools:
+      - curl
+      - wget
+      - net-tools
+      - nmap
+      - tcpdump
+      - tshark
+      - openssh-client
+      - openssh-server
+
+    # Container and virtualization
+    containers:
+      # - docker.io
+
+    # System utilities
+    system_utils:
+      - unzip
+      - zlib1g
+      - zlib1g-dev
+      # - lsof
+      # - lshw
+      # - pciutils
+      # - rsync
+      # - jq
+      # - sqlite3
+      - zip
+      # - xz-utils
+
+  tasks:
+    # ============================================
+    # GitHub Release Installations
+    # ============================================
+
+    - name: Create installation directories for GitHub releases
+      file:
+        path: "{{ item.install_dir }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ github_releases }}"
+
+    - name: Download and extract GitHub releases (tar.gz)
+      unarchive:
+        src: "{{ item.url }}"
+        dest: "{{ item.install_dir }}"
+        remote_src: yes
+        extra_opts: "{{ item.tar_strip | default(['--strip-components=1']) }}"
+      loop: "{{ github_releases }}"
+      when: item.url.endswith('.tar.gz')
+
+    - name: Download and extract GitHub releases (zip)
+      unarchive:
+        src: "{{ item.url }}"
+        dest: "{{ item.install_dir }}"
+        remote_src: yes
+      loop: "{{ github_releases }}"
+      when: item.url.endswith('.zip')
+
+    - name: Fix yazi structure (zip files don't strip components)
+      shell: |
+        cd {{ item.install_dir }}
+        if [ -d yazi-x86_64-unknown-linux-gnu ]; then
+          # Use rsync to merge directories and overwrite files
+          rsync -a yazi-x86_64-unknown-linux-gnu/ .
+          rm -rf yazi-x86_64-unknown-linux-gnu
+        fi
+      loop: "{{ github_releases }}"
+      when: item.url.endswith('.zip')
+      args:
+        executable: /bin/bash
+
+    - name: Create symlinks in /usr/bin for GitHub releases
+      file:
+        src: "{{ item.install_dir }}/{{ item.bin_path }}"
+        dest: "/usr/bin/{{ item.bin_name }}"
+        state: link
+        force: yes
+        follow: no
+      loop: "{{ github_releases }}"
+
+    - name: Create symlinks for extra binaries (if defined)
+      file:
+        src: "{{ item.0.install_dir }}/{{ item.1 }}"
+        dest: "/usr/bin/{{ item.1 }}"
+        state: link
+        force: yes
+        follow: no
+      loop: "{{ github_releases | subelements('extra_bins', skip_missing=True) }}"
+      when: item.0.extra_bins is defined
+
+    - name: Verify GitHub release installations
+      command: "{{ item.bin_name }} --version"
+      register: version_check
+      changed_when: false
+      failed_when: false
+      loop: "{{ github_releases }}"
+
+    - name: Display installed versions
+      debug:
+        msg: "{{ item.item.name }} version: {{ item.stdout_lines[0] if item.stdout_lines else 'unknown' }}"
+      loop: "{{ version_check.results }}"
+      when: item.rc == 0
+
+    # ============================================
+    # APT Package Installations
+    # ============================================
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 0
+
+    - name: Install core development tools
+      apt:
+        name: "{{ dev_tools }}"
+        state: present
+
+    - name: Install compilers and languages
+      apt:
+        name: "{{ compilers }}"
+        state: present
+
+    - name: Install Python development tools
+      apt:
+        name: "{{ python_tools }}"
+        state: present
+
+    - name: Install debugging and testing tools
+      apt:
+        name: "{{ debug_tools }}"
+        state: present
+
+    - name: Install version control tools
+      apt:
+        name: "{{ vcs_tools }}"
+        state: present
+
+    - name: Install terminal tools
+      apt:
+        name: "{{ terminal_tools }}"
+        state: present
+
+    - name: Install networking tools
+      apt:
+        name: "{{ network_tools }}"
+        state: present
+
+    - name: Install container tools
+      apt:
+        name: "{{ containers }}"
+        state: present
+
+    - name: Install system utilities
+      apt:
+        name: "{{ system_utils }}"
+        state: present

@@ -17,6 +17,12 @@ return {
         cpp = { "clang_format" },
         cs = { "csharpier" },
       },
+      formatters = {
+        ruff = {
+          command = "ruff",
+          args = { "format", "-" },
+        },
+      },
       format_after_save = {
         lsp_format = "fallback",
       },

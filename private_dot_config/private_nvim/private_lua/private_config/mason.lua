@@ -104,7 +104,8 @@ end
 
 -- ty (astral python language server)
 vim.lsp.config("ty", {
-  cmd = { "python", "-m", "ty", "server" },
+  -- cmd = { "python", "-m", "ty", "server" },
+  cmd = { "ty", "server" },
   filetypes = { "python" },
   on_attach = on_attach,
   capabilities = capabilities,

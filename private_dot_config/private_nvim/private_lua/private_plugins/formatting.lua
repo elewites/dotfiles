@@ -23,9 +23,12 @@ return {
           args = { "format", "-" },
         },
       },
-      format_after_save = {
-        lsp_format = "fallback",
-      },
+      format_after_save = function(bufnr)
+        return {
+          lsp_fallback = true,
+          async = true,
+        }
+      end,
       notify_no_formatters = true,
     })
 

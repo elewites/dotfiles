@@ -27,3 +27,6 @@ Host pc2
 Host wsl
   Hostname EROSRODRPC
   User eros
+Host pmux
+  Hostname 10.90.90.68
+  User root

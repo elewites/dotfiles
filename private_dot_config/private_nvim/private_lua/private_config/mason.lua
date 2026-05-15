@@ -96,7 +96,7 @@ for _, server_name in ipairs(servers) do
       },
       on_attach = on_attach,
       capabilities = capabilities,
-      filetypes = { "c", "cpp", "objc", "objcpp" },
+      filetypes = { "c", "cpp", "objc", "objcpp", "inc" },
     }
     vim.lsp.enable("clangd")
   end

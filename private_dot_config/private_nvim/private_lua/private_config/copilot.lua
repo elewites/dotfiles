@@ -14,7 +14,15 @@ copilot.setup({
   },
   assistant = { enabled = true },
   panel = { enabled = true },
+  copilot_model = "claude-3-5-haiku",
+  -- filetypes = {
+  -- markdown = true,
+  -- help = true,
+  -- },
 })
+
+-- Set haiku as default model for Copilot
+-- vim.g.copilot_model = "claude-3-5-haiku"
 
 -- copilot_chat.setup({
 --   model = "gpt-4.1", -- AI model to use

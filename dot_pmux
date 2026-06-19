@@ -1,0 +1,120 @@
+# Function names and descriptions (easy to customize)
+declare -A PMUX_FUNCTIONS=(
+    [bd]="Build and test all daemons"
+    [bdaccess]="Build and test access module"
+    [bdnx64]="Build and test nx64f daemon"
+    [bdvf]="Build and test vf4w daemon"
+    [bdasync]="Build and test async data daemon"
+    [bdall]="Build and test all modules"
+    [cpacces]="Copy access module library to nfsroot"
+    [updatelog]="Update service log levels to 4"
+    [updatefirewall]="Disable firewall service"
+)
+
+# Print menu with all available functions
+menu() {
+    echo ""
+    echo "========== PMUX MENU =========="
+    echo ""
+    for func_name in "${!PMUX_FUNCTIONS[@]}"; do
+        printf "  %-15s - %s\n" "$func_name" "${PMUX_FUNCTIONS[$func_name]}"
+    done
+    echo ""
+    echo "==============================="
+    echo ""
+}
+
+bd() {
+    (
+    set -e
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cd build/
+    make
+    ./particles/async_data/daemon/sel_async_data_ut
+    ./particles/vf4w/daemon/sel_vf4w_ut
+    ./particles/nx64f/daemon/sel_nx64f_ut
+    ./particles/time_source/daemon/time_source_daemon_ut
+    )
+}
+bdaccess() {
+    (
+    set -e
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cd build/
+    make sel_access_module sel_access_module_ut
+    ./particles/access_module/daemon/sel_access_module_ut
+    )
+}
+bdnx64() {
+    (
+    set -e
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cd build/
+    make sel_nx64f sel_nx64f_ut
+    ./particles/nx64f/daemon/sel_nx64f_ut
+    )
+}
+bdvf() {
+    (
+    set -e
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cd build/
+    make sel_vf4w sel_vf4w_ut
+    ./particles/vf4w/daemon/sel_vf4w_ut
+    )
+}
+bdasync() {
+    (
+    set -e
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cd build/
+    make sel_async_data sel_async_data_ut
+    ./particles/async_data/daemon/sel_async_data_ut
+    )
+}
+bdall() {
+    (
+    set -e
+    bdaccess
+    bdnx64
+    bdvf
+    bdasync
+    )
+}
+cpacces() {
+         sudo cp particles/access_module/daemon/libsel_access_module.so.0.1.0 /srv/nfsroot/lib
+
+         # make symlink from libsel_access_module.so to 0.1.0
+         sudo ln -sf libsel_access_module.so.0.1.0 /srv/nfsroot/lib/libsel_access_module.so.0
+         sudo ln -sf libsel_access_module.so.0 /srv/nfsroot/lib/libsel_access_module.so
+     }
+updatelog() {
+         local services=(
+             "/srv/nfsroot/lib/systemd/system/sel_async_data.service"
+             "/srv/nfsroot/lib/systemd/system/sel_vf4w.service"
+             "/srv/nfsroot/lib/systemd/system/sel_nx64f.service"
+             "/srv/nfsroot/lib/systemd/system/sel_inventory_manager@.service"
+         )
+
+         for service_file in "${services[@]}"; do
+             if [[ ! -f "$service_file" ]]; then
+                 echo "Warning: Service file not found at $service_file"
+                 continue
+             fi
+
+             sudo sed -i 's/LIBWIFE_LOG_LEVEL=3/LIBWIFE_LOG_LEVEL=4/' "$service_file"
+             echo "Updated log level to 4 in $(basename "$service_file")"
+         done
+     }
+updatefirewall () {
+         local service_file="/srv/nfsroot/lib/systemd/system/sel_firewall_sapphire.service"
+
+         if [[ ! -f "$service_file" ]]; then
+             echo "Error: Service file not found at $service_file"
+             return 1
+         fi
+
+         sudo sed -i 's/^ExecStart=/#ExecStart=/' "$service_file"
+         sudo sed -i 's/^Restart=/#Restart=/' "$service_file"
+         echo "Commented out ExecStart and Restart lines"
+     }

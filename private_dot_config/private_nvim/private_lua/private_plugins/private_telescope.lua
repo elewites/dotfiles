@@ -39,6 +39,10 @@ return {
             ["<C-k>"] = actions.move_selection_previous, -- move to prev result
             ["<C-j>"] = actions.move_selection_next, -- move to next result
             ["<C-q>"] = actions.send_selected_to_qflist + actions.open_qflist,
+            -- ["<C-q>"] = function(prompt_bufnr)
+            --   actions.send_selected_to_qflist(prompt_bufnr)
+            --   actions.open_qflist(prompt_bufnr)
+            -- end,
             ["<C-y>"] = function(prompt_bufnr)
               local entry = require("telescope.actions.state").get_selected_entry()
               if entry then

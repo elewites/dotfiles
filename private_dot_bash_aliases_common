@@ -11,23 +11,16 @@ alias r="source ~/.bashrc"
 alias vo="nvim /home/$USER/.config/nvim/"
 alias venv="source .venv/bin/activate"
 alias poky="source /opt/poky/5.0.17/environment-setup-cortexa72-cortexa53-poky-linux"
+alias menu="menu"
+alias pmux="nvim ~/.pmux"
+
 
 pkginstall() {
     local host="${1:-localhost}"
     ansible-playbook -i ~/.config/ansible/inventory ~/.config/ansible/setup-packages.yml --limit "$host" --ask-become-pass
 }
 
+# load pmux utils
+. ~/.pmux
 
-bd() {
-    (
-    set -e
-    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-    cd build/
-    make
-    ./particles/async_data/daemon/sel_async_data_ut
-    ./particles/vf4w/daemon/sel_vf4w_ut
-    ./particles/nx64f/daemon/sel_nx64f_ut
-    ./particles/time_source/daemon/time_source_daemon_ut
-    )
-}
 

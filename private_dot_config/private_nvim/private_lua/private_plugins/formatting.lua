@@ -18,12 +18,23 @@ return {
         cs = { "csharpier" },
       },
       formatters = {
+        prettier = {
+          command = "prettier",
+          args = {
+            "--stdin-filepath",
+            "$FILENAME",
+            "--config",
+            vim.fn.expand("~/.config/nvim/.prettierrc.json"),
+          },
+        },
         ruff = {
           command = "ruff",
           args = { "format", "-" },
         },
       },
-      format_after_save = function(bufnr)
+      format_on_save = function(bufnr)
+        local bufname = vim.api.nvim_buf_get_name(bufnr)
+        vim.notify("[CONFORM] Formatting: " .. bufname, vim.log.levels.INFO)
         return {
           lsp_fallback = true,
           async = true,
@@ -33,6 +44,9 @@ return {
     })
 
     vim.keymap.set({ "n", "v" }, "<leader>mp", function()
+      local bufnr = vim.api.nvim_get_current_buf()
+      local bufname = vim.api.nvim_buf_get_name(bufnr)
+      vim.notify("[CONFORM] Formatting: " .. bufname, vim.log.levels.INFO)
       conform.format({
         lsp_fallback = true,
         async = true,

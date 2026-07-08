@@ -6,9 +6,15 @@ declare -A PMUX_FUNCTIONS=(
     [bdvf]="Build and test vf4w daemon"
     [bdasync]="Build and test async data daemon"
     [bdall]="Build and test all modules"
-    [cpacces]="Copy access module library to nfsroot"
+    [cpaccess]="Copy access module library to nfsroot"
+    [cpvf4w]="Build and copy vf4w binary to nfsroot"
+    [cpasync]="Build and copy async data binary to nfsroot"
+    [cpnx64f]="Build and copy nx64f binary to nfsroot"
     [updatelog]="Update service log levels to 4"
     [updatefirewall]="Disable firewall service"
+    [deldb]="Delete runtime config"
+    [delblueframe]="Delete blueframe and runtime config"
+    [updateblueframe]="Update blueframe and dotnet publish files"
 )
 
 # Print menu with all available functions
@@ -24,10 +30,27 @@ menu() {
     echo ""
 }
 
+
+updateblueframe() {
+  sudo rm -rf /srv/nfsroot/opt/sel/sapphire/runtime_config
+  sudo rm -rf /srv/nfsroot/opt/sel/sapphire/blueframe
+  sudo cp -r ./dotnet_publish /srv/nfsroot/opt/sel/sapphire/bin
+
+}
+
+deldb() {
+  sudo rm -rf /srv/nfsroot/opt/sel/sapphire/runtime_config
+}
+
+delblueframe() {
+  sudo rm -rf /srv/nfsroot/opt/sel/sapphire/runtime_config
+  sudo rm -rf /srv/nfsroot/opt/sel/sapphire/bin
+}
+
 bd() {
     (
     set -e
-    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DMINE_ENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     cd build/
     make
     ./particles/async_data/daemon/sel_async_data_ut
@@ -36,58 +59,97 @@ bd() {
     ./particles/time_source/daemon/time_source_daemon_ut
     )
 }
+
 bdaccess() {
     (
     set -e
-    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DMINE_ENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     cd build/
     make sel_access_module sel_access_module_ut
     ./particles/access_module/daemon/sel_access_module_ut
     )
 }
+
 bdnx64() {
     (
     set -e
-    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DMINE_ENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     cd build/
     make sel_nx64f sel_nx64f_ut
     ./particles/nx64f/daemon/sel_nx64f_ut
     )
 }
+
 bdvf() {
     (
     set -e
-    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DMINE_ENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     cd build/
     make sel_vf4w sel_vf4w_ut
     ./particles/vf4w/daemon/sel_vf4w_ut
     )
 }
+
 bdasync() {
     (
     set -e
-    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DMINE_ENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     cd build/
     make sel_async_data sel_async_data_ut
     ./particles/async_data/daemon/sel_async_data_ut
     )
 }
+
 bdall() {
     (
     set -e
-    bdaccess
-    bdnx64
-    bdvf
-    bdasync
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DMINE_ENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cd build/
+    make sel_access_module sel_access_module_ut sel_nx64f sel_nx64f_ut sel_vf4w sel_vf4w_ut sel_async_data sel_async_data_ut
+    ./particles/access_module/daemon/sel_access_module_ut
+    ./particles/nx64f/daemon/sel_nx64f_ut
+    ./particles/vf4w/daemon/sel_vf4w_ut
+    ./particles/async_data/daemon/sel_async_data_ut
     )
 }
-cpacces() {
+
+cpaccess() {
+         cd target_build
+         make sel_access_module
          sudo cp particles/access_module/daemon/libsel_access_module.so.0.1.0 /srv/nfsroot/lib
 
          # make symlink from libsel_access_module.so to 0.1.0
          sudo ln -sf libsel_access_module.so.0.1.0 /srv/nfsroot/lib/libsel_access_module.so.0
          sudo ln -sf libsel_access_module.so.0 /srv/nfsroot/lib/libsel_access_module.so
      }
+
+cpvf4w() {
+         (
+         cd target_build/particles/vf4w/daemon
+         make sel_vf4w
+         sudo cp sel_vf4w /srv/nfsroot/bin
+         echo "Built and copied vf4w binary to /srv/nfsroot/bin"
+         )
+     }
+
+cpasync() {
+         (
+         cd target_build/particles/async_data/daemon
+         make sel_async_data
+         sudo cp sel_async_data /srv/nfsroot/bin
+         echo "Built and copied async data binary to /srv/nfsroot/bin"
+         )
+     }
+
+cpnx64f() {
+         (
+         cd target_build/particles/nx64f/daemon
+         make sel_nx64f
+         sudo cp sel_nx64f /srv/nfsroot/bin
+         echo "Built and copied nx64f binary to /srv/nfsroot/bin"
+         )
+     }
+
 updatelog() {
          local services=(
              "/srv/nfsroot/lib/systemd/system/sel_async_data.service"
@@ -118,3 +180,5 @@ updatefirewall () {
          sudo sed -i 's/^Restart=/#Restart=/' "$service_file"
          echo "Commented out ExecStart and Restart lines"
      }
+
+

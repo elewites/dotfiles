@@ -7,6 +7,6 @@ export PATH=$PATH:~/.local/bin/:~/node_modules/.bin
 export NODE_USE_ENV_PROXY=1
 
 # Load SEL-specific environment variables if .sel file exists
-if [ -f ~/.seld/.sel ]; then
-    source ~/.seld/.sel
+if [ -f ~/sel_config//.sel ]; then
+    source ~/sel_config/.sel
 fi

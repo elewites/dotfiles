@@ -45,6 +45,7 @@ mason_tool_installer.setup({
     "markdownlint", -- markdown lint
     "npm-groovy-lint", -- groovy lint
     "hadolint", -- dockerfile
+    "tclint",
   },
 })
 

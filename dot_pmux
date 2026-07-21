@@ -15,6 +15,8 @@ declare -A PMUX_FUNCTIONS=(
     [deldb]="Delete runtime config"
     [delblueframe]="Delete blueframe and runtime config"
     [updateblueframe]="Update blueframe and dotnet publish files"
+    [iboot_cycle]="Cycle the iBoot power outlet via telnet"
+    [commission]="Update commission_user_based.py with new IP and gateway"
 )
 
 # Print menu with all available functions
@@ -181,4 +183,33 @@ updatefirewall () {
          echo "Commented out ExecStart and Restart lines"
      }
 
+iboot_cycle() {
+         {
+             sleep 2
+             printf 'login\r\n'
+             sleep 1
+             printf 'admin\r\n'
+             sleep 1
+             printf 'admin\r\n'
+             sleep 1
+             printf 'set outlet cycle\r\n'
+             sleep 1
+         } | telnet 10.39.79.155
+     }
 
+
+commission() {
+         local file="/srv/nfsroot/root/bin/mac/commission_user_based.py"
+
+         sudo test -f "$file" || {
+             printf 'File not found: %s\n' "$file" >&2
+             return 1
+         }
+
+         sudo sed -i \
+             -e 's/^DEFAULT_IP=.*/DEFAULT_IP="10.90.90.68\/24"/' \
+             -e 's/^DEFAULT_GATEWAY_IP=.*/DEFAULT_GATEWAY_IP="10.90.90.1"/' \
+             "$file"
+
+         printf 'Updated %s\n' "$file"
+     }

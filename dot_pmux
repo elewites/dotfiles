@@ -17,6 +17,7 @@ declare -A PMUX_FUNCTIONS=(
     [updateblueframe]="Update blueframe and dotnet publish files"
     [iboot_cycle]="Cycle the iBoot power outlet via telnet"
     [commission]="Update commission_user_based.py with new IP and gateway"
+    [deploy_branch]="Build and deploy the current branch to the target device"
 )
 
 # Print menu with all available functions
@@ -107,11 +108,12 @@ bdall() {
     set -e
     cmake -S . -B build/ -DMINE_PRODUCT=8003p -DMINE_ENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
     cd build/
-    make sel_access_module sel_access_module_ut sel_nx64f sel_nx64f_ut sel_vf4w sel_vf4w_ut sel_async_data sel_async_data_ut
+    make sel_access_module sel_access_module_ut sel_nx64f sel_nx64f_ut sel_vf4w sel_vf4w_ut sel_async_data sel_async_data_ut sel_inventory_manager sel_inventory_manager_ut
     ./particles/access_module/daemon/sel_access_module_ut
     ./particles/nx64f/daemon/sel_nx64f_ut
     ./particles/vf4w/daemon/sel_vf4w_ut
     ./particles/async_data/daemon/sel_async_data_ut
+    ./particles/inventory_manager/daemon/sel_inventory_manager_ut
     )
 }
 
@@ -213,3 +215,16 @@ commission() {
 
          printf 'Updated %s\n' "$file"
      }
+
+
+deploy_branch () {
+
+  cmake -B target_build \
+   -DCMAKE_TOOLCHAIN_FILE=/opt/poky/5.0.17/sysroots/x86_64-pokysdk-linux/usr/share/cmake/OEToolchainConfig.cmake \
+   -DMINE_PRODUCT=8003p \
+   -DMINE_UUT=root@10.90.90.68 &&
+
+  cmake --build target_build --target deploy_mine
+
+
+}

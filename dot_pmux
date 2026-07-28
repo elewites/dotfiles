@@ -18,6 +18,9 @@ declare -A PMUX_FUNCTIONS=(
     [iboot_cycle]="Cycle the iBoot power outlet via telnet"
     [commission]="Update commission_user_based.py with new IP and gateway"
     [deploy_branch]="Build and deploy the current branch to the target device"
+    [pullrootfs]="Pull the latest SEL-8003P root filesystem from the server and install it to /srv/rootfs-YYYY-MM-DD"
+    [pullubi]="Pull the latest SEL-8003P root filesystem UBI image from the server and save it to ~/Downloads"
+    [compileuboot]="Compile U-Boot for SEL-8003P"
 )
 
 # Print menu with all available functions
@@ -227,4 +230,110 @@ deploy_branch () {
   cmake --build target_build --target deploy_mine
 
 
+}
+
+
+pullrootfs () {
+          local base="http://lpul-releases/SEL-8003P"
+          local latest archive tmp stage destination metadata
+
+         latest="$(
+             curl -fsSL "$base/" |
+             sed -nE 's/.*href="(NIGHT_[^"]+)\/".*/\1/p' |
+             sort -V |
+             tail -n1
+         )" || return 1
+
+         if [[ -z "$latest" ]]; then
+             echo "No NIGHT build folders found" >&2
+             return 1
+         fi
+
+          archive="$base/$latest/images/root_fs/sel-8003p-develop-zcu102-zynqmp.rootfs.tar.gz"
+          tmp="$(mktemp)"
+          stage="$(mktemp -d)"
+          destination="/srv/rootfs-$(date +%Y-%m-%d)"
+
+          printf 'Selected build folder: %s\n' "$latest"
+          printf 'Rootfs URL: %s\n' "$archive"
+          metadata="$(curl -fsSI "$archive")" || {
+              printf 'Could not read rootfs metadata\n' >&2
+              rm -f "$tmp"
+              rm -rf "$stage"
+              return 1
+          }
+          printf '%s\n' "$metadata" | awk '
+              BEGIN { IGNORECASE=1 }
+              /^last-modified:/ || /^content-length:/ || /^etag:/ { print }
+          '
+
+          printf 'Downloading rootfs archive...\n'
+          curl -fL "$archive" -o "$tmp" || return 1
+
+         tar -xzf "$tmp" -C "$stage" || return 1
+
+         sudo mkdir -p "$destination"
+         sudo cp -a "$stage"/. "$destination"/
+
+         rm -f "$tmp"
+         rm -rf "$stage"
+
+         echo "Installed $latest rootfs in $destination"
+     }
+
+
+pullubi () {
+          local base="http://lpul-releases/SEL-8003P"
+          local latest filename url destination metadata
+
+          latest="$(
+              curl -fsSL "$base/" |
+              sed -nE 's/.*href="(NIGHT_[^"]+)\/".*/\1/p' |
+              sort -V |
+              tail -n1
+          )" || return 1
+
+         if [[ -z "$latest" ]]; then
+             printf 'No NIGHT build folders found\n' >&2
+             return 1
+         fi
+
+         filename="sel-8003p-develop-zcu102-zynqmp.rootfs.ubi"
+         url="$base/$latest/images/root_fs/$filename"
+          destination="$HOME/Downloads/$filename"
+
+          mkdir -p "$HOME/Downloads"
+
+          printf 'Selected build folder: %s\n' "$latest"
+          printf 'UBI URL: %s\n' "$url"
+          metadata="$(curl -fsSI "$url")" || {
+              printf 'Could not read UBI metadata\n' >&2
+              return 1
+          }
+          printf '%s\n' "$metadata" | awk '
+              BEGIN { IGNORECASE=1 }
+              /^last-modified:/ || /^content-length:/ || /^etag:/ { print }
+          '
+
+          printf 'Downloading UBI image...\n'
+          curl -fL "$url" -o "$destination" || return 1
+
+         printf 'Downloaded rootfs UBI image to %s\n' "$destination"
+     }
+
+compileuboot () {
+
+    mkdir -p build
+    poky
+    export ARCH=arm64
+    export PYTHON=/usr/bin/python3
+    export PYTHON3=/usr/bin/python3
+    export HOSTPYTHON=/usr/bin/python3
+
+    ${CROSS_COMPILE}gcc --version
+    # make xilinx_sel_8003_defconfig
+    make O=build xilinx_sel_8003_defconfig
+
+    make -j"$(nproc)"
+    make O=build -j"$(nproc)"
 }

@@ -103,6 +103,7 @@
 
     # System utilities
     system_utils:
+      - libsecret-tools
       - unzip
       - zlib1g
       - zlib1g-dev

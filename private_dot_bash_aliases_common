@@ -14,17 +14,12 @@ alias poky="source /opt/poky/5.0.17/environment-setup-cortexa72-cortexa53-poky-l
 alias menu="menu"
 alias pmuxconfig="nvim ~/.pmux"
 alias sel="nvim ~/sel_config/.sel"
-alias vitis="source ~/Xilinx/Vitis/2024.2/settings64.sh"
-alias bootbin="bootgen -image boot_partitions.bif -arch zynqmp -w -o BOOT.bin"
-alias pmuxtio="sudo tio --timestamp --log --log-file /tmp/pmux.log --log-strip /dev/ttyUSB0"
-alias comm="sudoedit /srv/nfsroot/root/bin/mac/commission_user_based.py"
-alias jtagbin="./jtag_load_pmux.sh -boot-bin BOOT.bin -crc"
-alias jtagrootfs="./jtag_load_pmux.sh -rootfs-image rootfs.ubi"
+alias validateansible='CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 ansible-playbook --syntax-check ~/.config/ansible/setup-packages.yml'
 
 
 pkginstall() {
     local host="${1:-localhost}"
-    ansible-playbook -i ~/.config/ansible/inventory ~/.config/ansible/setup-packages.yml --limit "$host" --ask-become-pass
+    CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 ansible-playbook -i ~/.config/ansible/inventory ~/.config/ansible/setup-packages.yml --limit "$host" --ask-become-pass
 }
 
 # load pmux utils

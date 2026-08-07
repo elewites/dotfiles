@@ -21,7 +21,31 @@ declare -A PMUX_FUNCTIONS=(
     [pullrootfs]="Pull the latest SEL-8003P root filesystem from the server and install it to /srv/rootfs-YYYY-MM-DD"
     [pullubi]="Pull the latest SEL-8003P root filesystem UBI image from the server and save it to ~/Downloads"
     [compileuboot]="Compile U-Boot for SEL-8003P"
+    [compilekernel]="Compile Linux kernel for SEL-8003P"
+    [cpkernel]="Copy Linux kernel and device tree to the current directory"
+    [cpbootbin]="Copy BOOT.bin to the current directory"
+    [cpbootgen]="Copy the bootgen directory to the current directory"
+    [vitis]="Load the Vitis 2024.2 environment"
+    [bootbin]="Generate BOOT.bin with bootgen"
+    [pmuxtio]="Open the PMUX serial console and log output"
+    [comm]="Edit the commissioning script"
+    [jtagbin]="Program BOOT.bin over JTAG"
+    [jtagrootfs]="Program the root filesystem over JTAG"
+    [cpuboot]="Copy the U-Boot ELF to the current directory"
 )
+
+alias pmuxlog="nvim /tmp/pmux.log"
+alias cpbootbin="sudo cp /home/erosrodr/work/bootgen/gen_bootbin/BOOT.bin ."
+alias cpbootgen="mkdir -p bootgen && sudo cp -r /home/erosrodr/work/shared/_For\ All/SEL-8003_Binaries/gen_bootbin ./bootgen && sudo chown -R $USER bootgen"
+alias vitis="source ~/Xilinx/Vitis/2024.2/settings64.sh"
+alias bootbin="bootgen -image boot_part.bif -arch zynqmp -w -o BOOT.bin"
+alias pmuxtio="sudo tio --timestamp --log --log-file /tmp/pmux.log --log-strip /dev/ttyUSB0"
+alias comm="sudoedit /srv/nfsroot/root/bin/mac/commission_user_based.py"
+alias jtagbin="./jtag_load_pmux.sh -boot-bin BOOT.bin -crc"
+alias jtagrootfs="./jtag_load_pmux.sh -rootfs-image rootfs.ubi"
+alias cpuboot="cp /home/erosrodr/work/u-boot-xlnx/build/u-boot.elf ."
+alias cpkernel="cp /home/erosrodr/work/linux-kernel/build/arch/arm64/boot/Image /home/erosrodr/work/linux-kernel/build/arch/arm64/boot/dts/sel/sel_8003/sel-8003.dtb ."
+
 
 # Print menu with all available functions
 menu() {
@@ -336,4 +360,25 @@ compileuboot () {
 
     make -j"$(nproc)"
     make O=build -j"$(nproc)"
+}
+
+compilekernel () {
+
+    mkdir -p build
+    poky
+    export ARCH=arm64
+    export PYTHON=/usr/bin/python3
+    export PYTHON3=/usr/bin/python3
+    export HOSTPYTHON=/usr/bin/python3
+
+    ${CROSS_COMPILE}gcc --version
+    make O=build sel_8003_defconfig
+    make O=build -j"$(nproc)" Image dtbs
+
+    printf 'Kernel: %s\n' \
+         "$PWD/build/arch/arm64/boot/Image"
+
+     printf 'DTB: %s\n' \
+         "$PWD/build/arch/arm64/boot/dts/sel/sel_8003/sel-8003.dtb"
+
 }

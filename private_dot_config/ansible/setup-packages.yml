@@ -45,6 +45,13 @@
         install_dir: "/opt/radarr"
         tar_strip: ["--strip-components=1"]
 
+      - name: prowlarr
+        url: "https://github.com/Prowlarr/Prowlarr/releases/download/v2.6.1.5509/Prowlarr.develop.2.6.1.5509.linux-core-x64.tar.gz"
+        bin_name: Prowlarr
+        bin_path: "Prowlarr"
+        install_dir: "/opt/prowlarr"
+        tar_strip: ["--strip-components=1"]
+
     # Core development tools
     dev_tools:
       - build-essential
@@ -123,7 +130,7 @@
       - zip
       # - xz-utils
 
-    default_installations: "{{ ['lazygit', 'neovim', 'yazi', 'copilot-cli'] + (['radarr'] if 'media_servers' in group_names else []) }}"
+    default_installations: "{{ ['lazygit', 'neovim', 'yazi', 'copilot-cli'] + (['radarr', 'prowlarr'] if 'media_servers' in group_names else []) }}"
 
     selected_installations: >-
       {{ (requested_installations.split(',') if requested_installations is defined

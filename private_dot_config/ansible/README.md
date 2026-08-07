@@ -18,6 +18,15 @@ ansible-playbook -i ~/.config/ansible/inventory ~/.config/ansible/setup-packages
 ansible-playbook -i ~/.config/ansible/inventory ~/.config/ansible/setup-packages.yml --check --ask-become-pass
 ```
 
+To override the profile for one run, pass a comma-separated list:
+
+```bash
+ansible-playbook -i ~/.config/ansible/inventory ~/.config/ansible/setup-packages.yml \
+  --limit EROSRODRLXPC2 \
+  -e requested_installations=radarr,lazygit \
+  --ask-become-pass
+```
+
 ## Requirements
 
 **Install Ansible:**

@@ -38,6 +38,13 @@
         install_dir: "/opt/copilot-cli"
         tar_strip: [] # Don't strip components for this tarball
 
+      - name: radarr
+        url: "https://github.com/Radarr/Radarr/releases/download/v6.4.1.10545/Radarr.develop.6.4.1.10545.linux-core-x64.tar.gz"
+        bin_name: Radarr
+        bin_path: "Radarr"
+        install_dir: "/opt/radarr"
+        tar_strip: ["--strip-components=1"]
+
     # Core development tools
     dev_tools:
       - build-essential
@@ -116,6 +123,15 @@
       - zip
       # - xz-utils
 
+    default_installations: "{{ ['lazygit', 'neovim', 'yazi', 'copilot-cli'] + (['radarr'] if 'media_servers' in group_names else []) }}"
+
+    selected_installations: >-
+      {{ (requested_installations.split(',') if requested_installations is defined
+          else default_installations) | map('trim') | reject('equalto', '') | list }}
+
+    selected_github_releases: >-
+      {{ github_releases | selectattr('name', 'in', selected_installations) | list }}
+
   tasks:
     # ============================================
     # GitHub Release Installations
@@ -126,7 +142,8 @@
         path: "{{ item.install_dir }}"
         state: directory
         mode: "0755"
-      loop: "{{ github_releases }}"
+      loop: "{{ selected_github_releases }}"
+      tags: [github]
 
     - name: Download and extract GitHub releases (tar.gz)
       unarchive:
@@ -134,16 +151,18 @@
         dest: "{{ item.install_dir }}"
         remote_src: yes
         extra_opts: "{{ item.tar_strip | default(['--strip-components=1']) }}"
-      loop: "{{ github_releases }}"
+      loop: "{{ selected_github_releases }}"
       when: item.url.endswith('.tar.gz')
+      tags: [github]
 
     - name: Download and extract GitHub releases (zip)
       unarchive:
         src: "{{ item.url }}"
         dest: "{{ item.install_dir }}"
         remote_src: yes
-      loop: "{{ github_releases }}"
+      loop: "{{ selected_github_releases }}"
       when: item.url.endswith('.zip')
+      tags: [github]
 
     - name: Fix yazi structure (zip files don't strip components)
       shell: |
@@ -153,8 +172,9 @@
           rsync -a yazi-x86_64-unknown-linux-gnu/ .
           rm -rf yazi-x86_64-unknown-linux-gnu
         fi
-      loop: "{{ github_releases }}"
+      loop: "{{ selected_github_releases }}"
       when: item.url.endswith('.zip')
+      tags: [github]
       args:
         executable: /bin/bash
 
@@ -165,7 +185,8 @@
         state: link
         force: yes
         follow: no
-      loop: "{{ github_releases }}"
+      loop: "{{ selected_github_releases }}"
+      tags: [github]
 
     - name: Create symlinks for extra binaries (if defined)
       file:
@@ -174,21 +195,107 @@
         state: link
         force: yes
         follow: no
-      loop: "{{ github_releases | subelements('extra_bins', skip_missing=True) }}"
+      loop: "{{ selected_github_releases | subelements('extra_bins', skip_missing=True) }}"
       when: item.0.extra_bins is defined
+      tags: [github]
+
+    - name: Create Radarr system group
+      group:
+        name: radarr
+        system: yes
+      when: "'radarr' in selected_installations"
+      tags: [radarr]
+
+    - name: Create Radarr system user
+      user:
+        name: radarr
+        group: radarr
+        system: yes
+        home: /var/lib/radarr
+        create_home: yes
+        shell: /usr/sbin/nologin
+      when: "'radarr' in selected_installations"
+      tags: [radarr]
+
+    - name: Enforce GitHub release ownership and permissions
+      file:
+        path: "{{ item.install_dir }}"
+        owner: root
+        group: root
+        mode: "u=rwX,go=rX"
+        recurse: yes
+      loop: "{{ selected_github_releases }}"
+      tags: [github]
+
+    - name: Ensure Radarr executable permission
+      file:
+        path: /opt/radarr/Radarr
+        owner: root
+        group: root
+        mode: "0755"
+      when: "'radarr' in selected_installations"
+      tags: [radarr]
+
+    - name: Create Radarr data directory
+      file:
+        path: /var/lib/radarr
+        state: directory
+        owner: radarr
+        group: radarr
+        mode: "0750"
+      when: "'radarr' in selected_installations"
+      tags: [radarr]
+
+    - name: Install Radarr systemd service
+      copy:
+        dest: /etc/systemd/system/radarr.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Radarr Daemon
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          User=radarr
+          Group=radarr
+          Type=simple
+          ExecStart=/opt/radarr/Radarr -nobrowser -data=/var/lib/radarr
+          Restart=on-failure
+          RestartSec=5
+          TimeoutStopSec=20
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart Radarr
+      when: "'radarr' in selected_installations"
+      tags: [radarr]
+
+    - name: Enable and start Radarr
+      systemd:
+        name: radarr
+        enabled: yes
+        state: started
+        daemon_reload: yes
+      when: "'radarr' in selected_installations"
+      tags: [radarr]
 
     - name: Verify GitHub release installations
       command: "{{ item.bin_name }} --version"
       register: version_check
       changed_when: false
       failed_when: false
-      loop: "{{ github_releases }}"
+      loop: "{{ selected_github_releases }}"
+      tags: [github]
 
     - name: Display installed versions
       debug:
         msg: "{{ item.item.name }} version: {{ item.stdout_lines[0] if item.stdout_lines else 'unknown' }}"
       loop: "{{ version_check.results }}"
       when: item.rc == 0
+      tags: [github]
 
     # ============================================
     # APT Package Installations
@@ -243,3 +350,10 @@
       apt:
         name: "{{ system_utils }}"
         state: present
+
+  handlers:
+    - name: Restart Radarr
+      systemd:
+        name: radarr
+        state: restarted
+        daemon_reload: yes

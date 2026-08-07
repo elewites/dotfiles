@@ -5,5 +5,7 @@ localhost ansible_connection=local
 EROSRODRLXPC2 ansible_user=erosrodr
 EROSRODRPC ansible_user=eros
 
+[media_servers]
+
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3

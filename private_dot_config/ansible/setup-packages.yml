@@ -282,6 +282,79 @@
       when: "'radarr' in selected_installations"
       tags: [radarr]
 
+    - name: Create Prowlarr system group
+      group:
+        name: prowlarr
+        system: yes
+      when: "'prowlarr' in selected_installations"
+      tags: [prowlarr]
+
+    - name: Create Prowlarr system user
+      user:
+        name: prowlarr
+        group: prowlarr
+        system: yes
+        home: /var/lib/prowlarr
+        create_home: yes
+        shell: /usr/sbin/nologin
+      when: "'prowlarr' in selected_installations"
+      tags: [prowlarr]
+
+    - name: Ensure Prowlarr executable permission
+      file:
+        path: /opt/prowlarr/Prowlarr
+        owner: root
+        group: root
+        mode: "0755"
+      when: "'prowlarr' in selected_installations"
+      tags: [prowlarr]
+
+    - name: Create Prowlarr data directory
+      file:
+        path: /var/lib/prowlarr
+        state: directory
+        owner: prowlarr
+        group: prowlarr
+        mode: "0750"
+      when: "'prowlarr' in selected_installations"
+      tags: [prowlarr]
+
+    - name: Install Prowlarr systemd service
+      copy:
+        dest: /etc/systemd/system/prowlarr.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Prowlarr Daemon
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          User=prowlarr
+          Group=prowlarr
+          Type=simple
+          ExecStart=/opt/prowlarr/Prowlarr -nobrowser -data=/var/lib/prowlarr
+          Restart=on-failure
+          RestartSec=5
+          TimeoutStopSec=20
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart Prowlarr
+      when: "'prowlarr' in selected_installations"
+      tags: [prowlarr]
+
+    - name: Enable and start Prowlarr
+      systemd:
+        name: prowlarr
+        enabled: yes
+        state: started
+        daemon_reload: yes
+      when: "'prowlarr' in selected_installations"
+      tags: [prowlarr]
+
     - name: Verify GitHub release installations
       command: "{{ item.bin_name }} --version"
       register: version_check
@@ -355,5 +428,11 @@
     - name: Restart Radarr
       systemd:
         name: radarr
+        state: restarted
+        daemon_reload: yes
+
+    - name: Restart Prowlarr
+      systemd:
+        name: prowlarr
         state: restarted
         daemon_reload: yes

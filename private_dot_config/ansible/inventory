@@ -6,6 +6,7 @@ EROSRODRLXPC2 ansible_user=erosrodr
 EROSRODRPC ansible_user=eros
 
 [media_servers]
+yoga
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3

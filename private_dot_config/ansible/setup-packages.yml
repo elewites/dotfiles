@@ -130,7 +130,13 @@
       - zip
       # - xz-utils
 
-    default_installations: "{{ ['lazygit', 'neovim', 'yazi', 'copilot-cli'] + (['radarr', 'prowlarr'] if 'media_servers' in group_names else []) }}"
+    media_apt_packages:
+      - qbittorrent-nox
+
+    tailscale_interfaces: >-
+      {{ ansible_interfaces | select('search', 'tailscale') | list }}
+
+    default_installations: "{{ ['lazygit', 'neovim', 'yazi', 'copilot-cli'] + (['radarr', 'prowlarr', 'qbittorrent'] if 'media_servers' in group_names else []) }}"
 
     selected_installations: >-
       {{ (requested_installations.split(',') if requested_installations is defined
@@ -206,23 +212,120 @@
       when: item.0.extra_bins is defined
       tags: [github]
 
+    - name: Create media system group
+      group:
+        name: media
+        system: yes
+      when: "'radarr' in selected_installations or 'qbittorrent' in selected_installations"
+      tags: [media, radarr, qbittorrent]
+
+    - name: Require exactly one Tailscale interface for qBittorrent
+      fail:
+        msg: >-
+          Expected exactly one interface containing 'tailscale' for qBittorrent,
+          found {{ tailscale_interfaces | length }}: {{ tailscale_interfaces }}
+      when:
+        - "'qbittorrent' in selected_installations"
+        - tailscale_interfaces | length != 1
+      tags: [qbittorrent]
+
     - name: Create Radarr system group
       group:
         name: radarr
         system: yes
-      when: "'radarr' in selected_installations"
+      when: "'radarr' in selected_installations or 'qbittorrent' in selected_installations"
       tags: [radarr]
 
     - name: Create Radarr system user
       user:
         name: radarr
         group: radarr
+        groups:
+          - media
+        append: yes
         system: yes
         home: /var/lib/radarr
         create_home: yes
         shell: /usr/sbin/nologin
-      when: "'radarr' in selected_installations"
+      when: "'radarr' in selected_installations or 'qbittorrent' in selected_installations"
       tags: [radarr]
+
+    - name: Install qBittorrent-nox
+      apt:
+        name: "{{ media_apt_packages }}"
+        state: present
+      when: "'qbittorrent' in selected_installations"
+      tags: [qbittorrent]
+
+    - name: Create qBittorrent configuration directory
+      file:
+        path: /var/lib/radarr/.config/qBittorrent
+        state: directory
+        owner: radarr
+        group: radarr
+        mode: "0700"
+      when: "'qbittorrent' in selected_installations"
+      tags: [qbittorrent]
+
+    - name: Configure qBittorrent-nox
+      copy:
+        dest: /var/lib/radarr/.config/qBittorrent/qBittorrent.conf
+        owner: radarr
+        group: radarr
+        mode: "0600"
+        content: |
+          [BitTorrent]
+          Session\AddTorrent\AddToTopOfQueue=false
+
+          [LegalNotice]
+          Accepted=true
+
+          [Preferences]
+          Connection\Interface={{ tailscale_interfaces[0] }}
+          Connection\InterfaceAddress=0.0.0.0
+          WebUI\Address=*
+          WebUI\Port=8080
+      notify: Restart qBittorrent
+      when: "'qbittorrent' in selected_installations"
+      tags: [qbittorrent]
+
+    - name: Install qBittorrent systemd service
+      copy:
+        dest: /etc/systemd/system/qbittorrent.service
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=qBittorrent-nox Daemon
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          User=radarr
+          Group=media
+          Type=simple
+          Environment=HOME=/var/lib/radarr
+          WorkingDirectory=/var/lib/radarr
+          ExecStart=/usr/bin/qbittorrent-nox --confirm-legal-notice
+          Restart=on-failure
+          RestartSec=5
+          TimeoutStopSec=20
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Restart qBittorrent
+      when: "'qbittorrent' in selected_installations"
+      tags: [qbittorrent]
+
+    - name: Enable and start qBittorrent
+      systemd:
+        name: qbittorrent
+        enabled: yes
+        state: started
+        daemon_reload: yes
+      when: "'qbittorrent' in selected_installations"
+      tags: [qbittorrent]
 
     - name: Enforce GitHub release ownership and permissions
       file:

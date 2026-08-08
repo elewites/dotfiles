@@ -314,7 +314,7 @@
           Type=simple
           Environment=HOME=/var/lib/radarr
           WorkingDirectory=/var/lib/radarr
-          ExecStart=/usr/bin/qbittorrent-nox --confirm-legal-notice
+          ExecStart=/usr/bin/qbittorrent-nox
           Restart=on-failure
           RestartSec=5
           TimeoutStopSec=20

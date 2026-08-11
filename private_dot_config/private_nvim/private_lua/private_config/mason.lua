@@ -27,6 +27,7 @@ mason_lspconfig.setup({
     "dockerls",
     "clangd",
     "mesonlsp",
+    "omnisharp",
   },
   automatic_installation = false,
 })
@@ -40,6 +41,7 @@ mason_tool_installer.setup({
     "stylua", -- lua formatter
     "gofumpt", -- go formatter
     "beautysh", -- bash
+    "csharpier", -- C# formatter
 
     -- linters
     "markdownlint", -- markdown lint
@@ -71,9 +73,69 @@ local on_attach = function(_, bufnr)
   )
 end
 
-servers = mason_lspconfig.get_installed_servers()
+local function omnisharp_root_dir(bufnr, on_dir)
+  local fname = vim.api.nvim_buf_get_name(bufnr)
+  local dir = vim.fs.dirname(fname)
+
+  while dir do
+    if #vim.fn.glob(vim.fs.joinpath(dir, "*.csproj"), false, true) > 0 then
+      on_dir(dir)
+      return
+    end
+
+    local parent = vim.fs.dirname(dir)
+    if parent == dir then
+      break
+    end
+    dir = parent
+  end
+
+  on_dir(vim.fs.root(fname, { ".git" }))
+end
+
+vim.lsp.config("omnisharp", {
+  on_attach = on_attach,
+  capabilities = capabilities,
+  root_dir = omnisharp_root_dir,
+  cmd = function(dispatchers, config)
+    return vim.lsp.rpc.start({
+      vim.fn.stdpath("data") .. "/mason/bin/OmniSharp",
+      "-z",
+      "--hostPID",
+      tostring(vim.fn.getpid()),
+      "-s",
+      config.root_dir,
+      "DotNet:enablePackageRestore=false",
+      "--encoding",
+      "utf-8",
+      "--languageserver",
+    }, dispatchers, { cwd = config.root_dir })
+  end,
+  filetypes = { "cs" },
+  capabilities = vim.tbl_deep_extend("force", capabilities, {
+    workspace = { workspaceFolders = false },
+  }),
+  settings = {
+    MsBuild = {
+      LoadProjectsOnDemand = true,
+    },
+    RoslynExtensionsOptions = {
+      EnableDecompilationSupport = true,
+    },
+  },
+  cmd_env = {
+    DOTNET_ROLL_FORWARD = "Major",
+  },
+})
+vim.lsp.enable("omnisharp")
+
+local servers = mason_lspconfig.get_installed_servers()
 
 for _, server_name in ipairs(servers) do
+  if server_name == "csharp_ls" or server_name == "omnisharp" then
+    goto continue
+  end
+
   print("Configuring " .. server_name)
 
   -- general
@@ -81,6 +143,7 @@ for _, server_name in ipairs(servers) do
     on_attach = on_attach,
     capabilities = capabilities,
   })
+
   vim.lsp.enable(server_name)
 
   -- targeted
@@ -101,6 +164,8 @@ for _, server_name in ipairs(servers) do
     }
     vim.lsp.enable("clangd")
   end
+
+  ::continue::
 end
 
 -- ty (astral python language server)

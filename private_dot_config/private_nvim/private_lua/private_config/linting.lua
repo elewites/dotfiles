@@ -5,31 +5,57 @@ lint.linters_by_ft = {
   markdown = { "markdownlint" },
   dockerfile = { "hadolint" },
   groovy = { "npm-groovy-lint" },
+  c = { "cppcheck" },
   cpp = { "cppcheck" },
   -- tcl = { "tclint" },
 }
 
 ---------------------------------------------------------------------
 --- cpp
-lint.linters.cppcheck = {
-  cmd = "cppcheck",
-  stdin = false,
-  args = {
+local cppcheck_parser = require("lint.parser").from_errorformat(
+  "%f:%l:%c: %trror: %m," .. "%f:%l:%c: %tarning: %m," .. "%f:%l:%c: %m",
+  { source = "cppcheck" }
+)
+
+local function cppcheck_args()
+  local args = {
     "--enable=all",
     "--language=c++",
     "--std=c++17",
-    "--suppressions-list=cppcheck-suppressions-list.txt",
     "--inline-suppr",
     "--template=gcc",
-    vim.api.nvim_buf_get_name(0), -- Current buffer file
-  },
-  stream = "stderr", -- cppcheck writes diagnostics to stderr
-  ignore_exitcode = false, -- cppcheck returns non-zero if issues found
-  parser = require("lint.parser").from_errorformat(
-    "%f:%l:%c: %trror: %m," .. "%f:%l:%c: %tarning: %m," .. "%f:%l:%c: %m",
-    { source = "cppcheck" }
-  ),
-}
+  }
+  local suppressions = vim.fs.find("cppcheck-suppressions-list.txt", {
+    upward = true,
+    type = "file",
+    path = vim.fs.dirname(vim.api.nvim_buf_get_name(0)),
+  })[1]
+
+  if suppressions then
+    table.insert(args, "--suppressions-list=" .. suppressions)
+  else
+    vim.notify("[cppcheck] suppression file not found; continuing without it", vim.log.levels.WARN)
+  end
+
+  return args
+end
+
+lint.linters.cppcheck = function()
+  return {
+    cmd = "cppcheck",
+    stdin = false,
+    args = cppcheck_args(),
+    stream = "stderr", -- cppcheck writes diagnostics to stderr
+    ignore_exitcode = false,
+    parser = function(output, bufnr, cwd)
+      -- if vim.trim(output) ~= "" then
+      --   vim.notify("[cppcheck] stderr:\n" .. vim.trim(output), vim.log.levels.INFO)
+      -- end
+
+      return cppcheck_parser(output, bufnr, cwd)
+    end,
+  }
+end
 
 ---------------------------------------------------------------------
 --- Python

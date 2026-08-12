@@ -156,7 +156,7 @@ for _, server_name in ipairs(servers) do
         "--all-scopes-completion",
         "--clang-tidy",
         "--completion-style=detailed",
-        "--query-driver=/usr/bin/g++,usr/bin/clang,/usr/bin/gcc",
+        "--query-driver=/usr/bin/g++,/usr/bin/clang,/usr/bin/gcc,/opt/poky/5.0.17/sysroots/x86_64-pokysdk-linux/usr/bin/aarch64-poky-linux/aarch64-poky-linux-gcc",
       },
       on_attach = on_attach,
       capabilities = capabilities,

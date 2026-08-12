@@ -373,7 +373,19 @@ compilekernel () {
 
     ${CROSS_COMPILE}gcc --version
     make O=build sel_8003_defconfig
-    make O=build -j"$(nproc)" Image dtbs
+    make O=build -j"$(nproc)" Image dtbs compile_commands.json
+
+    # Remove the GCC ABI flag that clangd cannot parse.
+    jq 'map(
+        if has("command") then
+            .command |= gsub(" -mabi=lp64(?= |$)"; "")
+        elif has("arguments") then
+            .arguments |= map(select(. != "-mabi=lp64"))
+        else
+            .
+        end
+    )' build/compile_commands.json > build/compile_commands.json.tmp \
+        && mv build/compile_commands.json.tmp build/compile_commands.json
 
     printf 'Kernel: %s\n' \
          "$PWD/build/arch/arm64/boot/Image"

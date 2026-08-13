@@ -9,9 +9,13 @@
 
   vars:
     # GitHub releases to install
+    # NOTE: when bumping a package, update both `url` and `version` together -
+    # `version` is what gets compared against the installed marker file to
+    # decide whether to skip the download.
     github_releases:
       - name: lazygit
         url: "https://github.com/jesseduffield/lazygit/releases/download/v0.58.1/lazygit_0.58.1_linux_x86_64.tar.gz"
+        version: "0.58.1"
         bin_name: lazygit
         bin_path: "lazygit" # Relative path from install_dir
         install_dir: "/opt/lazygit"
@@ -19,12 +23,14 @@
 
       - name: neovim
         url: "https://github.com/neovim/neovim/releases/download/v0.11.5/nvim-linux-x86_64.tar.gz"
+        version: "0.11.5"
         bin_name: nvim
         bin_path: "bin/nvim" # Binary is in bin/ subdirectory
         install_dir: "/opt/nvim"
 
       - name: yazi
         url: "https://github.com/sxyazi/yazi/releases/download/v26.1.4/yazi-x86_64-unknown-linux-gnu.zip"
+        version: "26.1.4"
         bin_name: yazi
         bin_path: "yazi" # Will be fixed by the shell task
         install_dir: "/opt/yazi"
@@ -33,6 +39,7 @@
 
       - name: copilot-cli
         url: "https://github.com/github/copilot-cli/releases/download/v0.0.390/copilot-linux-x64.tar.gz"
+        version: "0.0.390"
         bin_name: copilot
         bin_path: "copilot"
         install_dir: "/opt/copilot-cli"
@@ -40,6 +47,7 @@
 
       - name: opencode
         url: "https://github.com/anomalyco/opencode/releases/download/v1.18.15/opencode-linux-x64.tar.gz"
+        version: "1.18.15"
         bin_name: opencode
         bin_path: "opencode"
         install_dir: "/opt/opencode"
@@ -47,6 +55,7 @@
 
       - name: radarr
         url: "https://github.com/Radarr/Radarr/releases/download/v6.4.1.10545/Radarr.develop.6.4.1.10545.linux-core-x64.tar.gz"
+        version: "6.4.1.10545"
         bin_name: Radarr
         bin_path: "Radarr"
         install_dir: "/opt/radarr"
@@ -54,6 +63,7 @@
 
       - name: prowlarr
         url: "https://github.com/Prowlarr/Prowlarr/releases/download/v2.6.1.5509/Prowlarr.develop.2.6.1.5509.linux-core-x64.tar.gz"
+        version: "2.6.1.5509"
         bin_name: Prowlarr
         bin_path: "Prowlarr"
         install_dir: "/opt/prowlarr"
@@ -157,12 +167,55 @@
     # GitHub Release Installations
     # ============================================
 
+    - name: Stat existing version marker for each github release
+      stat:
+        path: "{{ item.install_dir }}/.ansible_installed_version"
+      loop: "{{ selected_github_releases }}"
+      loop_control:
+        label: "{{ item.name }}"
+      register: version_marker_stat
+      tags: [github]
+
+    - name: Read existing version marker content
+      slurp:
+        src: "{{ item.item.install_dir }}/.ansible_installed_version"
+      loop: "{{ version_marker_stat.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+      when: item.stat.exists
+      register: version_marker_slurp
+      tags: [github]
+
+    - name: Reset list of github releases needing (re)install
+      set_fact:
+        github_releases_to_install: []
+      tags: [github]
+
+    - name: Determine which github releases need installing
+      set_fact:
+        github_releases_to_install: "{{ github_releases_to_install + [item.item.item] }}"
+      loop: "{{ version_marker_slurp.results }}"
+      loop_control:
+        label: "{{ item.item.item.name }}"
+      when: >-
+        item.skipped | default(false) or
+        (item.content | b64decode | trim) != item.item.item.version
+      tags: [github]
+
+    - name: Report github releases already up to date (skipped)
+      debug:
+        msg: "{{ item.name }} is already at version {{ item.version }} - skipping download"
+      loop: "{{ selected_github_releases | rejectattr('name', 'in', github_releases_to_install | map(attribute='name') | list) | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: [github]
+
     - name: Create installation directories for GitHub releases
       file:
         path: "{{ item.install_dir }}"
         state: directory
         mode: "0755"
-      loop: "{{ selected_github_releases }}"
+      loop: "{{ github_releases_to_install }}"
       tags: [github]
 
     - name: Download and extract GitHub releases (tar.gz)
@@ -171,7 +224,7 @@
         dest: "{{ item.install_dir }}"
         remote_src: yes
         extra_opts: "{{ item.tar_strip | default(['--strip-components=1']) }}"
-      loop: "{{ selected_github_releases }}"
+      loop: "{{ github_releases_to_install }}"
       when: item.url.endswith('.tar.gz')
       tags: [github]
 
@@ -180,7 +233,7 @@
         src: "{{ item.url }}"
         dest: "{{ item.install_dir }}"
         remote_src: yes
-      loop: "{{ selected_github_releases }}"
+      loop: "{{ github_releases_to_install }}"
       when: item.url.endswith('.zip')
       tags: [github]
 
@@ -192,7 +245,7 @@
           rsync -a yazi-x86_64-unknown-linux-gnu/ .
           rm -rf yazi-x86_64-unknown-linux-gnu
         fi
-      loop: "{{ selected_github_releases }}"
+      loop: "{{ github_releases_to_install }}"
       when: item.url.endswith('.zip')
       tags: [github]
       args:
@@ -334,6 +387,15 @@
       when: "'qbittorrent' in selected_installations"
       tags: [qbittorrent]
 
+    - name: Record installed version marker
+      copy:
+        dest: "{{ item.install_dir }}/.ansible_installed_version"
+        content: "{{ item.version }}"
+      loop: "{{ github_releases_to_install }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: [github]
+
     - name: Enforce GitHub release ownership and permissions
       file:
         path: "{{ item.install_dir }}"
@@ -472,20 +534,84 @@
       when: "'prowlarr' in selected_installations"
       tags: [prowlarr]
 
-    - name: Verify GitHub release installations
-      command: "{{ item.bin_name }} --version"
-      register: version_check
-      changed_when: false
-      failed_when: false
-      loop: "{{ selected_github_releases }}"
-      tags: [github]
+    # ============================================
+    # Verify media services are healthy
+    # ============================================
 
-    - name: Display installed versions
+    - name: Gather service facts
+      service_facts:
+      when: >-
+        'radarr' in selected_installations or
+        'prowlarr' in selected_installations or
+        'qbittorrent' in selected_installations
+      tags: [verify, media]
+
+    - name: Assert Radarr service is active and enabled
+      assert:
+        that:
+          - "'radarr.service' in ansible_facts.services"
+          - ansible_facts.services['radarr.service'].state == 'running'
+          - ansible_facts.services['radarr.service'].status == 'enabled'
+        fail_msg: "Radarr service is not running/enabled as expected!"
+        success_msg: "Radarr service is active and enabled."
+      when: "'radarr' in selected_installations"
+      tags: [verify, radarr]
+
+    - name: Assert Prowlarr service is active and enabled
+      assert:
+        that:
+          - "'prowlarr.service' in ansible_facts.services"
+          - ansible_facts.services['prowlarr.service'].state == 'running'
+          - ansible_facts.services['prowlarr.service'].status == 'enabled'
+        fail_msg: "Prowlarr service is not running/enabled as expected!"
+        success_msg: "Prowlarr service is active and enabled."
+      when: "'prowlarr' in selected_installations"
+      tags: [verify, prowlarr]
+
+    - name: Assert qBittorrent service is active and enabled
+      assert:
+        that:
+          - "'qbittorrent.service' in ansible_facts.services"
+          - ansible_facts.services['qbittorrent.service'].state == 'running'
+          - ansible_facts.services['qbittorrent.service'].status == 'enabled'
+        fail_msg: "qBittorrent service is not running/enabled as expected!"
+        success_msg: "qBittorrent service is active and enabled."
+      when: "'qbittorrent' in selected_installations"
+      tags: [verify, qbittorrent]
+
+    - name: Read deployed qBittorrent config
+      slurp:
+        src: /var/lib/radarr/.config/qBittorrent/qBittorrent.conf
+      register: qbt_conf_raw
+      when: "'qbittorrent' in selected_installations"
+      tags: [verify, qbittorrent]
+
+    - name: Assert qBittorrent is bound to the Tailscale interface
+      assert:
+        that:
+          - (qbt_conf_raw.content | b64decode) is search('Connection\\\\Interface=' + tailscale_interfaces[0] + '\\n')
+        fail_msg: >-
+          qBittorrent is NOT confirmed to be routing torrent traffic through the
+          Tailscale interface ({{ tailscale_interfaces[0] }})! Check
+          /var/lib/radarr/.config/qBittorrent/qBittorrent.conf
+        success_msg: "qBittorrent torrent traffic is correctly bound to {{ tailscale_interfaces[0] }}."
+      when: "'qbittorrent' in selected_installations"
+      tags: [verify, qbittorrent]
+
+    - name: Determine this host's Tailscale IP
+      set_fact:
+        tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' ~ tailscale_interfaces[0]]['ipv4']['address'] }}"
+      when: "'media_servers' in group_names and tailscale_interfaces | length == 1"
+      tags: [verify, media]
+
+    - name: Display media service URLs
       debug:
-        msg: "{{ item.item.name }} version: {{ item.stdout_lines[0] if item.stdout_lines else 'unknown' }}"
-      loop: "{{ version_check.results }}"
-      when: item.rc == 0
-      tags: [github]
+        msg:
+          - "Radarr:      http://{{ tailscale_ip }}:7878"
+          - "Prowlarr:    http://{{ tailscale_ip }}:9696"
+          - "qBittorrent: http://{{ tailscale_ip }}:8080"
+      when: "'media_servers' in group_names and tailscale_interfaces | length == 1"
+      tags: [verify, media]
 
     # ============================================
     # APT Package Installations

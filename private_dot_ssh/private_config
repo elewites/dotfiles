@@ -1,32 +1,29 @@
-Host erospc2
+Host erosverif
 	HostName icon-verifpc2
 	User erosrodr
-Host erospc1
-	HostName icon-verifpc1
-	User erosrodr
-Host iconpc2
+Host iconverif
 	HostName icon-verifpc2
 	User bld_icon
-Host iconpc1
-	HostName icon-verifpc1
-	User bld_icon
-Host lpul
+Host iconpul
 	HostName lpul-vanbuild01
 	User bld_icon
 Host erospul
   Hostname lpul-vanbuild01
   User erosrodr
-Host bench
-  Hostname erosrodrlxpc
-  User erosrodr
-  ForwardX11 yes
 Host pc2
   Hostname erosrodrlxpc2
   User erosrodr
   ForwardX11 yes
-Host wsl
+Host laptop
   Hostname EROSRODRPC
   User eros
 Host pmux
-  Hostname 10.90.90.68
+  Hostname 10.90.90.128
   User root
+Host iconbur
+  Hostname burbuildlxpc1
+  User bld_icon
+Host erosbur
+  Hostname burbuildlxpc1
+  User erosrodr
+

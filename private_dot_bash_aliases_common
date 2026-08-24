@@ -15,7 +15,7 @@ alias menu="menu"
 alias pmuxconfig="nvim ~/.pmux"
 alias sel="nvim ~/sel_config/.sel"
 alias validateansible='CRYPTOGRAPHY_OPENSSL_NO_LEGACY=1 ansible-playbook --syntax-check ~/.config/ansible/setup-packages.yml'
-
+alias sshconfig="nvim ~/.ssh/config"
 
 pkginstall() {
     local host="${1:-localhost}"

@@ -6,6 +6,7 @@ declare -A PMUX_FUNCTIONS=(
     [bdvf]="Build and test vf4w daemon"
     [bdasync]="Build and test async data daemon"
     [bdall]="Build and test all modules"
+    [bdtimesource]="Build and test time source daemon"
     [cpaccess]="Copy access module library to nfsroot"
     [cpvf4w]="Build and copy vf4w binary to nfsroot"
     [cpasync]="Build and copy async data binary to nfsroot"
@@ -32,6 +33,8 @@ declare -A PMUX_FUNCTIONS=(
     [jtagbin]="Program BOOT.bin over JTAG"
     [jtagrootfs]="Program the root filesystem over JTAG"
     [cpuboot]="Copy the U-Boot ELF to the current directory"
+    [fetchbuild]="Fetch the bootgen directory from the shared location"
+    [buildbootbin]="Build BOOT.bin using the build_bootbin.sh script"
 )
 
 alias pmuxlog="nvim /tmp/pmux.log"
@@ -39,12 +42,15 @@ alias cpbootbin="sudo cp /home/erosrodr/work/bootgen/gen_bootbin/BOOT.bin ."
 alias cpbootgen="mkdir -p bootgen && sudo cp -r /home/erosrodr/work/shared/_For\ All/SEL-8003_Binaries/gen_bootbin ./bootgen && sudo chown -R $USER bootgen"
 alias vitis="source ~/Xilinx/Vitis/2024.2/settings64.sh"
 alias bootbin="bootgen -image boot_part.bif -arch zynqmp -w -o BOOT.bin"
-alias pmuxtio="sudo tio --timestamp --log --log-file /tmp/pmux.log --log-strip /dev/ttyUSB0"
+alias pmuxtio="sudo tio --timestamp --log --log-file /tmp/serial_pmux.log --log-strip /dev/ttyUSB0"
 alias comm="sudoedit /srv/nfsroot/root/bin/mac/commission_user_based.py"
 alias jtagbin="./jtag_load_pmux.sh -boot-bin BOOT.bin -crc 2>&1 | tee /tmp/jtag_load_pmux.log"
 alias jtagrootfs="./jtag_load_pmux.sh -rootfs-image rootfs.ubi"
 alias cpuboot="cp /home/erosrodr/work/u-boot-xlnx/build/u-boot.elf ."
 alias cpkernel="cp /home/erosrodr/work/linux-kernel/build/arch/arm64/boot/Image /home/erosrodr/work/linux-kernel/build/arch/arm64/boot/dts/sel/sel_8003/sel-8003.dtb ."
+alias fetchbuild="./build_bootbin.sh fetch ~/work/shared/_For\ All/SEL-8003_Binaries/gen_bootbin"
+alias buildbootbin="./build_bootbin.sh build"
+alias sshpmux="ssh root@10.90.90.128 2>&1 | tee /tmp/ssh_pmux.log"
 
 
 # Print menu with all available functions
@@ -86,6 +92,16 @@ bd() {
     ./particles/async_data/daemon/sel_async_data_ut
     ./particles/vf4w/daemon/sel_vf4w_ut
     ./particles/nx64f/daemon/sel_nx64f_ut
+    ./particles/time_source/daemon/time_source_daemon_ut
+    )
+}
+
+bdtimesource() {
+    (
+    set -e
+    cmake -S . -B build/ -DMINE_PRODUCT=8003p -DMINE_ENABLE_COVERAGE=ON -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+    cd build/
+    make time_source_daemon time_source_daemon_ut
     ./particles/time_source/daemon/time_source_daemon_ut
     )
 }

@@ -140,7 +140,7 @@ export SUDO_EDITOR="nvim"
 eval "$(zoxide init bash)"
 
 # opencode
-export PATH=/home/erosrodr/.opencode/bin:$PATH
+# export PATH=/home/erosrodr/.opencode/bin:$PATH
 
 export PS1="(level \$SHLVL) $PS1"
 

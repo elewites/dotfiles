@@ -90,6 +90,7 @@
       # - rustc
       # - cargo
       - nodejs
+      - dotnet-sdk-10.0
 
     # Python development
     python_tools:

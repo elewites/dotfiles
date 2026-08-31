@@ -46,8 +46,8 @@
         tar_strip: [] # Don't strip components for this tarball
 
       - name: opencode
-        url: "https://github.com/anomalyco/opencode/releases/download/v1.18.15/opencode-linux-x64.tar.gz"
-        version: "1.18.15"
+        url: "https://github.com/anomalyco/opencode/releases/download/v1.18.22/opencode-linux-x64.tar.gz"
+        version: "1.18.22"
         bin_name: opencode
         bin_path: "opencode"
         install_dir: "/opt/opencode"
